@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aquarium Parameter Tracker</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-left">
+    <h1>🐠 Aquarium Parameter Tracker</h1>
+    <select id="tankSelect" aria-label="Select tank"></select>
+    <button id="newTankBtn" class="btn">+ New Tank</button>
+    <button id="deleteTankBtn" class="btn btn-danger">Delete Tank</button>
+  </div>
+  <div class="topbar-right">
+    <button id="exportAllBtn" class="btn btn-ghost">Export Backup (.json)</button>
+    <label class="btn btn-ghost file-btn">
+      Import Backup
+      <input type="file" id="importAllInput" accept="application/json" hidden>
+    </label>
+    <span id="saveIndicator" class="save-indicator" hidden>Saved</span>
+  </div>
+</header>
+
+<div id="emptyState" class="empty-state" hidden>
+  <p>No tanks yet. Create your first tank to get started.</p>
+  <button id="emptyNewTankBtn" class="btn btn-primary">+ New Tank</button>
+</div>
+
+<main id="appMain" hidden>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="profile">Tank Profile</button>
+    <button class="tab-btn" data-tab="overview">Overview &amp; Feedback</button>
+    <button class="tab-btn" data-tab="tests">Water Tests</button>
+    <button class="tab-btn" data-tab="waterchanges">Water Changes</button>
+    <button class="tab-btn" data-tab="ask">Ask Claude</button>
+  </nav>
+
+  <!-- PROFILE TAB -->
+  <section id="tab-profile" class="tab-panel">
+    <div class="grid-2">
+      <div class="card">
+        <h2>Basics</h2>
+        <label>Tank name
+          <input type="text" id="f-name" placeholder="e.g. Living Room 40B">
+        </label>
+        <label>Setup date
+          <input type="date" id="f-createdDate">
+        </label>
+        <div id="ageDisplay" class="hint"></div>
+        <div class="row">
+          <label class="grow">Size
+            <input type="number" id="f-sizeValue" min="0" step="0.1">
+          </label>
+          <label>Unit
+            <select id="f-sizeUnit">
+              <option value="gal">gallons</option>
+              <option value="L">liters</option>
+            </select>
+          </label>
+        </div>
+        <label>Substrate
+          <input type="text" id="f-substrate" placeholder="e.g. Fluval Stratum, sand, bare bottom">
+        </label>
+        <label>General notes
+          <textarea id="f-notes" rows="3" placeholder="Anything else worth remembering about this tank"></textarea>
+        </label>
+      </div>
+
+      <div class="card">
+        <h2>Equipment</h2>
+        <label class="checkbox-row">
+          <input type="checkbox" id="f-filterPresent"> Has a filter
+        </label>
+        <label>Filter type / notes
+          <input type="text" id="f-filterType" placeholder="e.g. HOB, canister, sponge">
+        </label>
+        <label class="checkbox-row">
+          <input type="checkbox" id="f-co2Present"> Injecting CO2
+        </label>
+        <label>CO2 notes
+          <input type="text" id="f-co2Type" placeholder="e.g. pressurized, 2 bps, DIY yeast">
+        </label>
+      </div>
+
+      <div class="card">
+        <h2>Plants</h2>
+        <div id="plantsList" class="chip-list"></div>
+        <div class="row">
+          <input type="text" id="newPlantInput" placeholder="Add a plant, e.g. Amazon Sword" class="grow">
+          <button id="addPlantBtn" class="btn">Add</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Stocking</h2>
+        <table class="mini-table" id="stockingTable">
+          <thead><tr><th>Species</th><th>Qty</th><th>Notes</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <div class="row">
+          <input type="text" id="newStockSpecies" placeholder="Species" class="grow">
+          <input type="number" id="newStockQty" placeholder="Qty" min="1" value="1" style="width:70px">
+          <input type="text" id="newStockNotes" placeholder="Notes" class="grow">
+          <button id="addStockBtn" class="btn">Add</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Target Ranges</h2>
+        <p class="hint">Used to generate feedback. Defaults are general community-tank guidelines &mdash; adjust for your species.</p>
+        <div class="row">
+          <label class="grow">Temp min
+            <input type="number" id="f-tempMin" step="0.1">
+          </label>
+          <label class="grow">Temp max
+            <input type="number" id="f-tempMax" step="0.1">
+          </label>
+          <label>Unit
+            <select id="f-tempUnit">
+              <option value="F">&deg;F</option>
+              <option value="C">&deg;C</option>
+            </select>
+          </label>
+        </div>
+        <div class="row">
+          <label class="grow">pH min<input type="number" id="f-phMin" step="0.1"></label>
+          <label class="grow">pH max<input type="number" id="f-phMax" step="0.1"></label>
+        </div>
+        <div class="row">
+          <label class="grow">GH min (dGH)<input type="number" id="f-ghMin" step="0.1"></label>
+          <label class="grow">GH max (dGH)<input type="number" id="f-ghMax" step="0.1"></label>
+        </div>
+        <div class="row">
+          <label class="grow">KH min (dKH)<input type="number" id="f-khMin" step="0.1"></label>
+          <label class="grow">KH max (dKH)<input type="number" id="f-khMax" step="0.1"></label>
+        </div>
+        <div class="row">
+          <label class="grow">Nitrate max (ppm)<input type="number" id="f-nitrateMax" step="1"></label>
+          <label class="grow">Ammonia max (ppm)<input type="number" id="f-ammoniaMax" step="0.1"></label>
+          <label class="grow">Nitrite max (ppm)<input type="number" id="f-nitriteMax" step="0.1"></label>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- OVERVIEW TAB -->
+  <section id="tab-overview" class="tab-panel" hidden>
+    <div class="card">
+      <h2>Latest Reading</h2>
+      <div id="latestReading" class="latest-grid"></div>
+    </div>
+    <div class="card">
+      <h2>Feedback</h2>
+      <div id="feedbackList" class="feedback-list"></div>
+    </div>
+  </section>
+
+  <!-- TESTS TAB -->
+  <section id="tab-tests" class="tab-panel" hidden>
+    <div class="card">
+      <h2>Log a Water Test</h2>
+      <form id="testForm" class="test-form">
+        <label>Date<input type="date" id="t-date" required></label>
+        <label>Temp<input type="number" step="0.1" id="t-temp" placeholder="&deg;"></label>
+        <label>pH<input type="number" step="0.01" id="t-ph"></label>
+        <label>Ammonia (ppm)<input type="number" step="0.01" id="t-ammonia"></label>
+        <label>Nitrite (ppm)<input type="number" step="0.01" id="t-nitrite"></label>
+        <label>Nitrate (ppm)<input type="number" step="1" id="t-nitrate"></label>
+        <label>GH (dGH)<input type="number" step="0.1" id="t-gh"></label>
+        <label>KH (dKH)<input type="number" step="0.1" id="t-kh"></label>
+        <label>Phosphate (ppm)<input type="number" step="0.01" id="t-phosphate"></label>
+        <label class="grow-full">Notes<input type="text" id="t-notes"></label>
+        <button type="submit" class="btn btn-primary">Add Test</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>Import Test Results (CSV)</h2>
+      <p class="hint">Header row required. Recognized columns: date, temp, ph, ammonia, nitrite, nitrate, gh, kh, phosphate, notes (any order, case-insensitive).</p>
+      <label class="btn file-btn">
+        Choose CSV file
+        <input type="file" id="csvImportInput" accept=".csv,text/csv" hidden>
+      </label>
+      <span id="csvImportResult" class="hint"></span>
+    </div>
+
+    <div class="card">
+      <h2>Chart</h2>
+      <div class="row">
+        <label>Parameter
+          <select id="chartParam">
+            <option value="temp">Temperature</option>
+            <option value="ph">pH</option>
+            <option value="ammonia">Ammonia</option>
+            <option value="nitrite">Nitrite</option>
+            <option value="nitrate" selected>Nitrate</option>
+            <option value="gh">GH</option>
+            <option value="kh">KH</option>
+            <option value="phosphate">Phosphate</option>
+          </select>
+        </label>
+      </div>
+      <svg id="chartSvg" viewBox="0 0 640 220" class="chart-svg"></svg>
+    </div>
+
+    <div class="card">
+      <h2>Test History</h2>
+      <div class="table-scroll">
+        <table class="data-table" id="testsTable">
+          <thead><tr>
+            <th>Date</th><th>Temp</th><th>pH</th><th>NH3</th><th>NO2</th><th>NO3</th><th>GH</th><th>KH</th><th>PO4</th><th>Notes</th><th></th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="row">
+        <button id="exportTestsCsvBtn" class="btn btn-ghost">Export Tests (.csv)</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- WATER CHANGES TAB -->
+  <section id="tab-waterchanges" class="tab-panel" hidden>
+    <div class="card">
+      <h2>Log a Water Change</h2>
+      <form id="wcForm" class="test-form">
+        <label>Date<input type="date" id="wc-date" required></label>
+        <label>Percent changed<input type="number" id="wc-percent" min="1" max="100" placeholder="%"></label>
+        <label class="grow-full">Notes<input type="text" id="wc-notes"></label>
+        <button type="submit" class="btn btn-primary">Add</button>
+      </form>
+    </div>
+    <div class="card">
+      <h2>History</h2>
+      <div id="lastWcHint" class="hint"></div>
+      <table class="data-table" id="wcTable">
+        <thead><tr><th>Date</th><th>%</th><th>Notes</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ASK CLAUDE TAB -->
+  <section id="tab-ask" class="tab-panel" hidden>
+    <div class="card">
+      <h2>Export Summary for Claude</h2>
+      <p class="hint">Generates a plain-text summary of this tank's profile, recent test history, and computed feedback. Copy or download it and paste it into any Claude conversation to ask follow-up questions.</p>
+      <div class="row">
+        <button id="genSummaryBtn" class="btn btn-primary">Generate Summary</button>
+        <button id="copySummaryBtn" class="btn">Copy</button>
+        <button id="downloadSummaryBtn" class="btn">Download .txt</button>
+      </div>
+      <textarea id="summaryOutput" rows="16" readonly placeholder="Click Generate Summary&hellip;"></textarea>
+    </div>
+
+    <div class="card">
+      <h2>Direct Chat (optional, experimental)</h2>
+      <p class="hint">
+        Calls the Anthropic API directly from your browser using your own API key. The key is stored only in this
+        browser's local storage and is sent only to <code>api.anthropic.com</code> &mdash; never to any other server.
+        Get a key at <code>console.anthropic.com</code>. This may fail depending on your browser's network/CORS
+        settings; the Export Summary option above always works as a fallback.
+      </p>
+      <label>Anthropic API key
+        <input type="password" id="apiKeyInput" placeholder="sk-ant-...">
+      </label>
+      <label>Model
+        <input type="text" id="apiModelInput" placeholder="e.g. claude-sonnet-4-5-20250929">
+      </label>
+      <label>Your question
+        <textarea id="askQuestion" rows="3" placeholder="e.g. Why did my nitrates spike this week?"></textarea>
+      </label>
+      <div class="row">
+        <button id="askBtn" class="btn btn-primary">Ask</button>
+      </div>
+      <div id="askStatus" class="hint"></div>
+      <div id="askAnswer" class="answer-box"></div>
+    </div>
+  </section>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
